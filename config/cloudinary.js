@@ -13,14 +13,14 @@ cloudinary.config({
 export const uploadOnCloudinary = async localFilePath => {
   try {
     const response = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: "auto", // Auto-detect image type
+      resource_type: "auto",
+      folder: "perfume-images",
     });
     return response;
   } catch (error) {
     console.error("Error uploading to Cloudinary:", error);
     throw error;
   } finally {
-    // Cleanup: Remove the file from the local filesystem
     fs.unlink(localFilePath, err => {
       if (err) console.error("Error deleting local file:", err);
     });
