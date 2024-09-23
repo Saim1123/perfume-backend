@@ -4,3 +4,4 @@
 /public/temp
 
 .env
+_.env.local
