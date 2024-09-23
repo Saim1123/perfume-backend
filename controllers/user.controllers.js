@@ -1,9 +1,11 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 import { generateTokenAndSetCookie } from "../utils/generateToken.js";
 import { sendVerificationEmail } from "../nodemailer/mail.js";
 import { sendWelcomeEmail } from "../nodemailer/welcome.js";
+import { sendPasswordResetEmail } from "../nodemailer/passwordResetEmail.js";
 
 export const signup = async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
@@ -118,23 +120,77 @@ export const logout = async (req, res) => {
 };
 
 export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
   try {
+    if (!email) {
+      throw new Error("Email is required");
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ success: false, message: "No user found with this email." });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpiresAt = Date.now() + 1 * 60 * 60 * 1000;
+
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpiresAt = resetTokenExpiresAt;
+    await user.save();
+
+    await sendPasswordResetEmail(user.email, resetToken);
+
+    res.status(200).json({ success: true, message: "Password reset link has been sent to your email." });
   } catch (error) {
     console.log("Forget Password: ", error.message);
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
 export const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
   try {
+    if (!password) {
+      throw new Error("Password is required.");
+    }
+    if (password.length < 5) {
+      throw new Error("Password must be at least 5 characters long.");
+    }
+
+    const user = await User.findOne({ resetPasswordToken: token, resetPasswordExpiresAt: { $gt: Date.now() } });
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Invalid or expired token." });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpiresAt = undefined;
+
+    await user.save();
+
+    res.status(200).json({ success: true, message: "Password reset successfullly." });
   } catch (error) {
     console.log("Reset Password: ", error.message);
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
 export const userDashboard = async (req, res) => {
   try {
+    const user = await User.findById(req.userId).populate("orders").populate("carts");
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "User not found" });
+    }
+
+    res.status(200).json({ success: true, user });
   } catch (error) {
-    console.log("Verify Otp: ", error.message);
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
