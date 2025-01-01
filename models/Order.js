@@ -31,6 +31,7 @@ const orderSchema = new Schema(
     },
     totalPrice: { type: Number, required: true },
     status: { type: String, required: true, enum: ["Pending", "Delivered", "Cancelled"], default: "Pending" },
+    paymentIntentId: { type: String },
     deliveredTime: { type: Date },
   },
   { timestamps: true },

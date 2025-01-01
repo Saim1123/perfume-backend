@@ -1,4 +1,5 @@
 import Product from "../models/Product.js";
+
 import { uploadOnCloudinary } from "../config/cloudinary.js";
 
 export const postProduct = async (req, res) => {
